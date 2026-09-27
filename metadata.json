@@ -1,0 +1,6 @@
+{
+  "name": "Meta Lead Ads + React Native Realtime PoC",
+  "description": "Full-stack Proof of Concept demonstrating realtime Meta Lead Ad webhook ingestion, Graph API normalization, user session routing, and instant push to React Native without manual refresh.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
