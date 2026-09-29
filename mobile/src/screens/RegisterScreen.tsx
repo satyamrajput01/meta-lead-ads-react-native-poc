@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types/index.js';
-import { useAuth } from '../context/AuthContext.js';
-import { CustomInput } from '../components/CustomInput.js';
-import { CustomButton } from '../components/CustomButton.js';
+import { RootStackParamList } from '../types/index';
+import { useAuth } from '../context/AuthContext';
+import { CustomInput } from '../components/CustomInput';
+import { CustomButton } from '../components/CustomButton';
 
 type RegisterScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Register'>;
 
@@ -176,3 +176,4 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+

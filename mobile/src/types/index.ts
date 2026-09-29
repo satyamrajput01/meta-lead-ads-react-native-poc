@@ -41,3 +41,4 @@ export interface SocketContextType {
   status: ConnectionStatus;
   reconnect: () => void;
 }
+

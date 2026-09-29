@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { ConnectionStatus } from '../types/index.js';
+import { ConnectionStatus } from '../types/index';
 
 interface ConnectionBadgeProps {
   status: ConnectionStatus;
@@ -84,3 +84,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+

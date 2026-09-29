@@ -1,7 +1,7 @@
 {
   "name": "meta-leads-mobile",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -13,6 +13,7 @@
     "@react-navigation/native": "^7.0.14",
     "@react-navigation/native-stack": "^7.2.0",
     "expo": "~52.0.0",
+    "expo-asset": "~11.0.5",
     "expo-status-bar": "~2.0.0",
     "react": "18.3.1",
     "react-native": "0.76.7",

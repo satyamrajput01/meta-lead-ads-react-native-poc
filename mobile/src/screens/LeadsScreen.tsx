@@ -8,13 +8,13 @@ import {
   ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
-import { useAuth } from '../context/AuthContext.js';
-import { useSocket } from '../context/SocketContext.js';
-import { apiService } from '../services/api.service.js';
-import { socketService } from '../services/socket.service.js';
-import { Lead } from '../types/index.js';
-import { LeadCard } from '../components/LeadCard.js';
-import { ConnectionBadge } from '../components/ConnectionBadge.js';
+import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
+import { apiService } from '../services/api.service';
+import { socketService } from '../services/socket.service';
+import { Lead } from '../types/index';
+import { LeadCard } from '../components/LeadCard';
+import { ConnectionBadge } from '../components/ConnectionBadge';
 
 export const LeadsScreen: React.FC = () => {
   const { user, logout } = useAuth();
@@ -268,3 +268,4 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
+

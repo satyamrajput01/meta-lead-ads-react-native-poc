@@ -4,5 +4,15 @@ dist/
 coverage/
 .DS_Store
 *.log
+
+# Environment / secrets
 .env*
 !.env.example
+
+# Expo local files
+.expo/
+mobile/.expo/
+
+# Local database/runtime data
+*.db
+*.db.json

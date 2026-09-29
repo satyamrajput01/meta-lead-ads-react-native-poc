@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
-import { SOCKET_URL } from '../config/env.js';
-import { Lead, ConnectionStatus } from '../types/index.js';
+import { SOCKET_URL } from '../config/env';
+import { Lead, ConnectionStatus } from '../types';
 
 class SocketService {
   private socket: Socket | null = null;
@@ -58,6 +58,7 @@ class SocketService {
   onStatusChange(fn: (status: ConnectionStatus) => void) {
     this.statusListeners.push(fn);
     fn(this.currentStatus);
+
     return () => {
       this.statusListeners = this.statusListeners.filter((l) => l !== fn);
     };
@@ -65,6 +66,7 @@ class SocketService {
 
   onNewLead(fn: (lead: Lead) => void) {
     this.leadListeners.push(fn);
+
     return () => {
       this.leadListeners = this.leadListeners.filter((l) => l !== fn);
     };

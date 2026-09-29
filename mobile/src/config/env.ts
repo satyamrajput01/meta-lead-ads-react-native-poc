@@ -11,7 +11,7 @@ import { Platform } from 'react-native';
  */
 
 // Replace this with your computer's LAN IP or ngrok tunnel when testing on a physical phone:
-const DEV_LAN_OR_NGROK_URL = '';
+const DEV_LAN_OR_NGROK_URL = 'https://presuming-dividable-dean.ngrok-free.dev';
 
 const getBaseUrl = (): string => {
   if (DEV_LAN_OR_NGROK_URL) {
@@ -29,3 +29,4 @@ const getBaseUrl = (): string => {
 
 export const API_BASE_URL = getBaseUrl();
 export const SOCKET_URL = getBaseUrl();
+

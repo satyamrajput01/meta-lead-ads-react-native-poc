@@ -4,14 +4,32 @@ import { authService } from '../services/auth.service.js';
 import { Lead, ServerToClientEvents, ClientToServerEvents, SocketData } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 
-let ioInstance: Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData> | null = null;
+type SocketServer = Server<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  Record<string, never>,
+  SocketData
+>;
 
-// Track active socket connections by user ID
-const activeUserSockets = new Map<string, Set<string>>();
+interface SocketRuntimeState {
+  ioInstance: SocketServer | null;
+  activeUserSockets: Map<string, Set<string>>;
+}
+
+const runtimeStateKey = Symbol.for('meta-leads-poc.socket-runtime');
+const runtimeGlobal = globalThis as any;
+const runtimeState = (runtimeGlobal[runtimeStateKey] ??= {
+  ioInstance: null,
+  activeUserSockets: new Map<string, Set<string>>(),
+}) as SocketRuntimeState;
 
 export const setupSocketIO = (
   httpServer: HttpServer
-): Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData> => {
+): SocketServer => {
+  if (runtimeState.ioInstance) {
+    return runtimeState.ioInstance;
+  }
+
   const io = new Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>(
     httpServer,
     {
@@ -57,10 +75,10 @@ export const setupSocketIO = (
     socket.join(userRoom);
 
     // Track active connection
-    if (!activeUserSockets.has(user.id)) {
-      activeUserSockets.set(user.id, new Set());
+    if (!runtimeState.activeUserSockets.has(user.id)) {
+      runtimeState.activeUserSockets.set(user.id, new Set());
     }
-    activeUserSockets.get(user.id)!.add(socket.id);
+    runtimeState.activeUserSockets.get(user.id)!.add(socket.id);
 
     logger.socket(
       'success',
@@ -74,11 +92,11 @@ export const setupSocketIO = (
     });
 
     socket.on('disconnect', (reason) => {
-      const userSockets = activeUserSockets.get(user.id);
+      const userSockets = runtimeState.activeUserSockets.get(user.id);
       if (userSockets) {
         userSockets.delete(socket.id);
         if (userSockets.size === 0) {
-          activeUserSockets.delete(user.id);
+          runtimeState.activeUserSockets.delete(user.id);
         }
       }
       logger.socket(
@@ -95,7 +113,7 @@ export const setupSocketIO = (
     });
   });
 
-  ioInstance = io;
+  runtimeState.ioInstance = io;
   return io;
 };
 
@@ -104,13 +122,13 @@ export const setupSocketIO = (
  * Crucial: Does NOT broadcast globally to all users.
  */
 export const emitLeadToUser = (userId: string, lead: Lead): boolean => {
-  if (!ioInstance) {
+  if (!runtimeState.ioInstance) {
     logger.socket('error', 'Cannot emit lead: Socket.IO server not initialized');
     return false;
   }
 
   const userRoom = `user_${userId}`;
-  const connectedSockets = activeUserSockets.get(userId);
+  const connectedSockets = runtimeState.activeUserSockets.get(userId);
   const isOnline = connectedSockets && connectedSockets.size > 0;
 
   logger.socket(
@@ -118,7 +136,7 @@ export const emitLeadToUser = (userId: string, lead: Lead): boolean => {
     `Emitting 'new_lead' event to room [${userRoom}]. (Target User active sessions: ${connectedSockets?.size || 0})`
   );
 
-  ioInstance.to(userRoom).emit('new_lead', lead);
+  runtimeState.ioInstance.to(userRoom).emit('new_lead', lead);
 
   return !!isOnline;
 };
@@ -127,7 +145,7 @@ export const emitLeadToUser = (userId: string, lead: Lead): boolean => {
  * Check if a user currently has an active Socket.IO connection
  */
 export const isUserOnline = (userId: string): boolean => {
-  const sockets = activeUserSockets.get(userId);
+  const sockets = runtimeState.activeUserSockets.get(userId);
   return !!sockets && sockets.size > 0;
 };
 
@@ -135,15 +153,15 @@ export const isUserOnline = (userId: string): boolean => {
  * Get count of currently online distinct users
  */
 export const getOnlineUsersCount = (): number => {
-  return activeUserSockets.size;
+  return runtimeState.activeUserSockets.size;
 };
 
 export const getActiveConnectionsInfo = (): Array<{ userId: string; socketCount: number }> => {
   const result: Array<{ userId: string; socketCount: number }> = [];
-  activeUserSockets.forEach((sockets, userId) => {
+  runtimeState.activeUserSockets.forEach((sockets, userId) => {
     result.push({ userId, socketCount: sockets.size });
   });
   return result;
 };
 
-export const getIO = () => ioInstance;
+export const getIO = () => runtimeState.ioInstance;

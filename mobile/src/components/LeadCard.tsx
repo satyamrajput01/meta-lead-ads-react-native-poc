@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Lead } from '../types/index.js';
+import { Lead } from '../types/index';
 
 interface LeadCardProps {
   lead: Lead;
@@ -133,3 +133,4 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
   },
 });
+

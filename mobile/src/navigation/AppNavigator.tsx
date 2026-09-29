@@ -2,11 +2,12 @@ import React from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types/index.js';
-import { useAuth } from '../context/AuthContext.js';
-import { LoginScreen } from '../screens/LoginScreen.js';
-import { RegisterScreen } from '../screens/RegisterScreen.js';
-import { LeadsScreen } from '../screens/LeadsScreen.js';
+
+import { RootStackParamList } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { LoginScreen } from '../screens/LoginScreen';
+import { RegisterScreen } from '../screens/RegisterScreen';
+import { LeadsScreen } from '../screens/LeadsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -30,13 +31,21 @@ export const AppNavigator: React.FC = () => {
         }}
       >
         {token && user ? (
-          // Authenticated Stack
-          <Stack.Screen name="Leads" component={LeadsScreen} />
+          <Stack.Screen
+            name="Leads"
+            component={LeadsScreen}
+          />
         ) : (
-          // Authentication Stack
           <>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen
+              name="Login"
+              component={LoginScreen}
+            />
+
+            <Stack.Screen
+              name="Register"
+              component={RegisterScreen}
+            />
           </>
         )}
       </Stack.Navigator>
