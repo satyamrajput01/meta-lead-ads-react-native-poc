@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, Trash2, Filter, RefreshCw, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { Terminal, Trash2 } from 'lucide-react';
 
 export interface LogEntry {
   id: string;
@@ -60,52 +60,55 @@ export const ServerLogsPanel: React.FC = () => {
   const getLevelBadge = (level: LogEntry['level']) => {
     switch (level) {
       case 'success':
-        return <span className="text-emerald-400 bg-emerald-950/80 border border-emerald-800/80 px-1 rounded text-[9px]">OK</span>;
+        return <span className="text-live bg-highlight border border-line px-1.5 py-0.5 rounded text-[9px] font-semibold">OK</span>;
       case 'error':
-        return <span className="text-red-400 bg-red-950/80 border border-red-800/80 px-1 rounded text-[9px]">ERR</span>;
+        return <span className="text-danger bg-[#fdf1ef] border border-[#f0d2cd] px-1.5 py-0.5 rounded text-[9px] font-semibold">ERR</span>;
       case 'warn':
-        return <span className="text-amber-400 bg-amber-950/80 border border-amber-800/80 px-1 rounded text-[9px]">WARN</span>;
+        return <span className="text-[#9a6a12] bg-[#fdf6e7] border border-[#f0e2c2] px-1.5 py-0.5 rounded text-[9px] font-semibold">WARN</span>;
       default:
-        return <span className="text-blue-400 bg-blue-950/80 border border-blue-800/80 px-1 rounded text-[9px]">INFO</span>;
+        return <span className="text-brand bg-highlight border border-line px-1.5 py-0.5 rounded text-[9px] font-semibold">INFO</span>;
     }
   };
 
   const getCategoryColor = (cat: LogEntry['category']) => {
     switch (cat) {
       case 'WEBHOOK':
-        return 'text-indigo-400';
+        return 'text-brand';
       case 'GRAPH_API':
-        return 'text-purple-400';
+        return 'text-[#6b4fb8]';
       case 'SOCKET':
-        return 'text-emerald-400';
+        return 'text-live';
       case 'AUTH':
-        return 'text-blue-400';
+        return 'text-brand';
       case 'DB':
-        return 'text-amber-400';
+        return 'text-[#9a6a12]';
       default:
-        return 'text-slate-400';
+        return 'text-muted';
     }
   };
 
   return (
-    <div className="bg-slate-950 rounded-2xl border border-slate-800 shadow-xl overflow-hidden flex flex-col h-full font-mono text-xs">
+    <div className="bg-surface rounded-card border border-line shadow-[var(--shadow-card)] overflow-hidden flex flex-col h-full text-xs">
       {/* Log Header & Toolbar */}
-      <div className="bg-slate-900 px-4 py-2.5 border-b border-slate-800 flex justify-between items-center text-slate-300">
+      <div className="bg-surface px-4 py-3 border-b border-line flex flex-wrap justify-between items-center gap-3">
         <div className="flex items-center gap-2">
-          <Terminal className="w-4 h-4 text-emerald-400" />
-          <span className="font-bold text-slate-100 text-xs tracking-wide">Live Backend Console & Webhook Trace</span>
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-1"></span>
+          <Terminal className="w-4 h-4 text-brand" />
+          <span className="font-semibold text-ink text-xs">Live backend console &amp; webhook trace</span>
+          <span className="relative flex w-2 h-2 ml-1">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-live opacity-60 animate-ping"></span>
+            <span className="relative inline-flex rounded-full w-2 h-2 bg-live"></span>
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Category Filter */}
-          <div className="flex items-center bg-slate-950 rounded-lg p-0.5 border border-slate-800 text-[10px]">
+          <div className="flex items-center bg-canvas rounded-control p-0.5 border border-line text-[10px]">
             {['ALL', 'WEBHOOK', 'GRAPH_API', 'SOCKET', 'AUTH', 'DB'].map((cat) => (
               <button
                 key={cat}
                 onClick={() => setCategoryFilter(cat)}
-                className={`px-2 py-1 rounded transition ${
-                  categoryFilter === cat ? 'bg-blue-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                className={`px-2 py-1 rounded-md transition-colors ${
+                  categoryFilter === cat ? 'bg-brand text-white font-semibold' : 'text-muted hover:text-ink'
                 }`}
               >
                 {cat}
@@ -116,7 +119,7 @@ export const ServerLogsPanel: React.FC = () => {
           <button
             onClick={clearLogs}
             title="Clear logs"
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+            className="p-2 rounded-control bg-canvas hover:bg-highlight border border-line text-muted hover:text-brand transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -124,27 +127,27 @@ export const ServerLogsPanel: React.FC = () => {
       </div>
 
       {/* Logs Viewport */}
-      <div ref={logContainerRef} className="flex-1 overflow-y-auto p-3 space-y-2 select-text text-slate-300 text-[11px] leading-relaxed">
+      <div ref={logContainerRef} className="flex-1 overflow-y-auto p-3 space-y-1.5 select-text font-mono text-[11px] leading-relaxed bg-canvas">
         {filteredLogs.length === 0 ? (
-          <div className="h-48 flex items-center justify-center text-slate-600">
+          <div className="h-48 flex items-center justify-center text-muted font-sans">
             <span>No log entries recorded for category {categoryFilter}. Trigger an action or webhook.</span>
           </div>
         ) : (
           filteredLogs.map((entry) => (
-            <div key={entry.id} className="border-b border-slate-900 pb-1.5 hover:bg-slate-900/40 px-1 rounded">
-              <div className="flex items-baseline gap-2">
-                <span className="text-slate-500 text-[10px] shrink-0">
+            <div key={entry.id} className="bg-surface border border-line rounded-control px-2.5 py-2 hover:border-brand/40 transition-colors">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="text-muted text-[10px] shrink-0">
                   {entry.timestamp.split('T')[1]?.slice(0, 8)}
                 </span>
                 {getLevelBadge(entry.level)}
-                <span className={`font-bold shrink-0 text-[10px] ${getCategoryColor(entry.category)}`}>
+                <span className={`font-semibold shrink-0 text-[10px] ${getCategoryColor(entry.category)}`}>
                   [{entry.category}]
                 </span>
-                <span className="text-slate-200 flex-1">{entry.message}</span>
+                <span className="text-ink flex-1 min-w-0">{entry.message}</span>
               </div>
 
               {entry.data && (
-                <pre className="mt-1 ml-16 p-2 rounded bg-slate-900/90 text-slate-400 text-[10px] overflow-x-auto border border-slate-800/80">
+                <pre className="mt-1.5 p-2 rounded-md bg-canvas text-muted text-[10px] overflow-x-auto border border-line">
                   {typeof entry.data === 'string' ? entry.data : JSON.stringify(entry.data, null, 2)}
                 </pre>
               )}

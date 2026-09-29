@@ -9,11 +9,7 @@ import {
   Copy,
   Check,
   ShieldCheck,
-  ExternalLink,
   RefreshCw,
-  Clock,
-  Sparkles,
-  HelpCircle,
   Code,
   Send,
   CheckCircle2,
@@ -52,9 +48,11 @@ interface ServerStatus {
   users: Array<{ id: string; name: string; email: string }>;
 }
 
+type TabId = 'stream' | 'leads' | 'meta_guide' | 'mobile_guide' | 'dev_test';
+
 export default function App() {
   const [status, setStatus] = useState<ServerStatus | null>(null);
-  const [activeTab, setActiveTab] = useState<'stream' | 'leads' | 'meta_guide' | 'mobile_guide' | 'dev_test'>('stream');
+  const [activeTab, setActiveTab] = useState<TabId>('stream');
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
   const [verifyResult, setVerifyResult] = useState<string | null>(null);
@@ -172,476 +170,527 @@ export default function App() {
     }
   };
 
+  const activeSockets = status?.stats.activeSocketConnections || 0;
+  const mobileOnline = activeSockets > 0;
+
+  const navItems: Array<{ id: TabId; label: string; icon: React.ReactNode; badge?: string }> = [
+    { id: 'stream', label: 'Live Stream', icon: <Terminal className="w-[18px] h-[18px]" /> },
+    { id: 'leads', label: 'Stored Leads', icon: <Database className="w-[18px] h-[18px]" />, badge: String(status?.stats.totalLeads || 0) },
+    { id: 'mobile_guide', label: 'Mobile App', icon: <Smartphone className="w-[18px] h-[18px]" /> },
+    { id: 'meta_guide', label: 'Webhook Setup', icon: <Webhook className="w-[18px] h-[18px]" /> },
+    { id: 'dev_test', label: 'Developer Tools', icon: <Code className="w-[18px] h-[18px]" /> },
+  ];
+
+  const tabMeta: Record<TabId, { title: string; subtitle: string }> = {
+    stream: { title: 'Live Stream', subtitle: 'Realtime webhook ingestion and Socket.IO dispatch trace' },
+    leads: { title: 'Stored Leads', subtitle: 'Leads ingested from Meta webhooks and routed to user accounts' },
+    mobile_guide: { title: 'Mobile App', subtitle: 'Run and connect the React Native client' },
+    meta_guide: { title: 'Webhook Setup', subtitle: 'Configure the Meta Developer Portal and expose your backend' },
+    dev_test: { title: 'Developer Tools', subtitle: 'Simulate a normalized Meta lead webhook locally' },
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
-      {/* Top App Header */}
-      <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 px-6 py-3.5 shadow-md">
-        <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-blue-500/20">
-              ∞
+    <div className="min-h-screen bg-canvas text-ink flex font-sans selection:bg-brand selection:text-white">
+      {/* Sidebar */}
+      <aside className="sticky top-0 h-screen w-16 md:w-64 shrink-0 bg-surface border-r border-line flex flex-col">
+        {/* Brand */}
+        <div className="h-16 flex items-center gap-3 px-3 md:px-5 border-b border-line">
+          <div className="w-9 h-9 rounded-[10px] bg-brand text-white flex items-center justify-center font-bold text-lg shrink-0">
+            ∞
+          </div>
+          <div className="hidden md:block min-w-0">
+            <div className="text-sm font-semibold text-ink truncate">Meta Lead Ads</div>
+            <div className="text-xs text-muted truncate">Realtime Console</div>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 px-2 md:px-3 py-4 space-y-1">
+          <div className="hidden md:block px-2 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
+            Workspace
+          </div>
+          {navItems.map((item) => {
+            const active = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                title={item.label}
+                className={`w-full flex items-center gap-3 px-2.5 md:px-3 py-2.5 rounded-[10px] text-sm font-medium transition-colors ${
+                  active
+                    ? 'bg-highlight text-brand'
+                    : 'text-muted hover:bg-canvas hover:text-ink'
+                }`}
+              >
+                <span className={active ? 'text-brand' : 'text-muted'}>{item.icon}</span>
+                <span className="hidden md:inline flex-1 text-left">{item.label}</span>
+                {item.badge && (
+                  <span
+                    className={`hidden md:inline-flex items-center justify-center min-w-6 px-1.5 h-5 rounded-full text-[11px] font-semibold ${
+                      active ? 'bg-brand text-white' : 'bg-canvas text-muted border border-line'
+                    }`}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* System status area */}
+        <div className="border-t border-line p-2 md:p-3 space-y-2">
+          <div className="flex items-center gap-3 px-1.5 md:px-2 py-2 rounded-[10px]">
+            <span className="relative flex w-2.5 h-2.5 shrink-0">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-live opacity-60 animate-ping"></span>
+              <span className="relative inline-flex rounded-full w-2.5 h-2.5 bg-live"></span>
+            </span>
+            <div className="hidden md:block min-w-0">
+              <div className="text-xs font-semibold text-ink">Server active</div>
+              <div className="text-[11px] text-muted">Port 3000</div>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-white tracking-tight">
-                  Meta Lead Ads Realtime Backend
-                </h1>
-                <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                  SERVER ACTIVE
+          </div>
+          <div className="flex items-center gap-3 px-1.5 md:px-2 py-2 rounded-[10px]">
+            <Radio className={`w-[18px] h-[18px] shrink-0 ${mobileOnline ? 'text-live' : 'text-muted'}`} />
+            <div className="hidden md:block min-w-0">
+              <div className="text-xs font-semibold text-ink">
+                {activeSockets} Mobile {activeSockets === 1 ? 'session' : 'sessions'}
+              </div>
+              <div className={`text-[11px] ${mobileOnline ? 'text-live' : 'text-muted'}`}>
+                {mobileOnline ? 'Connected' : 'Waiting for app'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Right column */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-line">
+          <div className="h-16 px-4 sm:px-6 flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-base font-semibold text-ink truncate">{tabMeta[activeTab].title}</h1>
+                <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-medium text-live bg-highlight px-2 py-0.5 rounded-full border border-line">
+                  <span className="w-1.5 h-1.5 rounded-full bg-live"></span>
+                  Server active
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                Official Webhook Ingestion &middot; Graph API Normalizer &middot; Authenticated Socket.IO Dispatch
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Port: 3000</span>
+              <p className="text-xs text-muted truncate">{tabMeta[activeTab].subtitle}</p>
             </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-xs">
-              <Radio className="w-3.5 h-3.5 text-blue-400" />
-              <span>
-                {status?.stats.activeSocketConnections || 0} Mobile {status?.stats.activeSocketConnections === 1 ? 'Session' : 'Sessions'}
-              </span>
-            </div>
-
-            <button
-              onClick={fetchStatus}
-              title="Refresh status"
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Workspace */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
-        {/* Metric Cards Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-blue-950 border border-blue-800 flex items-center justify-center text-blue-400">
-              <Smartphone className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xs text-slate-400">Connected Mobile Apps</div>
-              <div className="text-xl font-bold text-white">
-                {status?.stats.activeSocketConnections || 0}
-                <span className="text-xs font-normal text-slate-400 ml-1.5">
-                  ({status?.stats.activeSocketConnections ? 'Live Socket.IO' : 'Waiting for app'})
-                </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-canvas border border-line text-muted text-xs">
+                <Server className="w-3.5 h-3.5" />
+                <span>Port 3000</span>
               </div>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-950 border border-emerald-800 flex items-center justify-center text-emerald-400">
-              <Database className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xs text-slate-400">Total Leads Ingested</div>
-              <div className="text-xl font-bold text-white">
-                {status?.stats.totalLeads || 0}
-                <span className="text-xs font-normal text-slate-400 ml-1.5">in SQLite</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-400">
-              <Webhook className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xs text-slate-400">Meta Webhook Endpoint</div>
-              <div className="text-xs font-bold text-emerald-400 flex items-center gap-1 mt-0.5">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>/api/webhooks/meta (Ready)</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-indigo-950 border border-indigo-800 flex items-center justify-center text-indigo-400">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xs text-slate-400">Registered CRM Agents</div>
-              <div className="text-xl font-bold text-white">
-                {status?.stats.totalUsers || 0}
-                <span className="text-xs font-normal text-slate-400 ml-1.5">Accounts</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Webhook Configuration Quick Bar */}
-        <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-4 text-xs">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="font-semibold text-slate-300">Meta Webhook URL:</span>
-            <code className="bg-slate-950 text-blue-300 px-2.5 py-1 rounded border border-slate-800 font-mono select-all">
-              {webhookUrl}
-            </code>
-            <button
-              onClick={() => copyToClipboard(webhookUrl, true)}
-              className="text-slate-400 hover:text-white p-1 rounded transition"
-              title="Copy URL"
-            >
-              {copiedUrl ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-            </button>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="font-semibold text-slate-300">Verify Token:</span>
-            <code className="bg-slate-950 text-emerald-300 px-2.5 py-1 rounded border border-slate-800 font-mono select-all">
-              {verifyToken}
-            </code>
-            <button
-              onClick={() => copyToClipboard(verifyToken, false)}
-              className="text-slate-400 hover:text-white p-1 rounded transition"
-              title="Copy Token"
-            >
-              {copiedToken ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-            </button>
-
-            <button
-              onClick={testHandshake}
-              disabled={isVerifying}
-              className="ml-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-2.5 py-1 rounded transition text-xs flex items-center gap-1 disabled:opacity-50"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>{isVerifying ? 'Verifying...' : 'Test GET Handshake'}</span>
-            </button>
-          </div>
-        </div>
-
-        {verifyResult && (
-          <div className={`p-3 rounded-lg text-xs font-mono border ${
-            verifyResult.includes('200 OK') ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300' : 'bg-red-950/60 border-red-800 text-red-300'
-          }`}>
-            {verifyResult}
-          </div>
-        )}
-
-        {/* Tab Controls */}
-        <div className="flex border-b border-slate-800 gap-2">
-          <button
-            onClick={() => setActiveTab('stream')}
-            className={`px-4 py-2.5 text-xs font-bold border-b-2 flex items-center gap-2 transition ${
-              activeTab === 'stream'
-                ? 'border-blue-500 text-white bg-slate-900/60 rounded-t-lg'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Terminal className="w-4 h-4 text-emerald-400" />
-            <span>Live Webhook & Socket.IO Stream</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('leads')}
-            className={`px-4 py-2.5 text-xs font-bold border-b-2 flex items-center gap-2 transition ${
-              activeTab === 'leads'
-                ? 'border-blue-500 text-white bg-slate-900/60 rounded-t-lg'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Database className="w-4 h-4 text-blue-400" />
-            <span>Database Stored Leads ({status?.stats.totalLeads || 0})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('mobile_guide')}
-            className={`px-4 py-2.5 text-xs font-bold border-b-2 flex items-center gap-2 transition ${
-              activeTab === 'mobile_guide'
-                ? 'border-blue-500 text-white bg-slate-900/60 rounded-t-lg'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Smartphone className="w-4 h-4 text-indigo-400" />
-            <span>Run React Native App Guide</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('meta_guide')}
-            className={`px-4 py-2.5 text-xs font-bold border-b-2 flex items-center gap-2 transition ${
-              activeTab === 'meta_guide'
-                ? 'border-blue-500 text-white bg-slate-900/60 rounded-t-lg'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Webhook className="w-4 h-4 text-purple-400" />
-            <span>Meta Developer Portal & ngrok Setup</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('dev_test')}
-            className={`px-4 py-2.5 text-xs font-bold border-b-2 flex items-center gap-2 transition ${
-              activeTab === 'dev_test'
-                ? 'border-blue-500 text-white bg-slate-900/60 rounded-t-lg'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Code className="w-4 h-4 text-amber-400" />
-            <span>Dev Curl Helper</span>
-          </button>
-        </div>
-
-        {/* Tab 1: Live Stream & Pipeline Logs */}
-        {activeTab === 'stream' && (
-          <div className="h-[560px]">
-            <ServerLogsPanel />
-          </div>
-        )}
-
-        {/* Tab 2: Database Stored Leads */}
-        {activeTab === 'leads' && (
-          <div className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-sm font-bold text-white">Stored Leads in SQLite Database</h3>
-                <p className="text-xs text-slate-400">Leads ingested from Meta webhooks and routed to user accounts</p>
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-canvas border border-line text-xs">
+                <Radio className={`w-3.5 h-3.5 ${mobileOnline ? 'text-live' : 'text-muted'}`} />
+                <span className="text-ink font-medium">{activeSockets}</span>
+                <span className="text-muted">{activeSockets === 1 ? 'session' : 'sessions'}</span>
               </div>
               <button
                 onClick={fetchStatus}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium border border-slate-700 flex items-center gap-1.5 transition"
+                title="Refresh status"
+                className="p-2 rounded-[10px] bg-canvas hover:bg-highlight border border-line text-muted hover:text-brand transition-colors"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Refresh Table</span>
+                <RefreshCw className="w-4 h-4" />
               </button>
             </div>
+          </div>
+        </header>
 
-            {!status?.recentLeads || status.recentLeads.length === 0 ? (
-              <div className="p-12 text-center border border-dashed border-slate-800 rounded-xl text-slate-500 text-xs">
-                No leads recorded in database yet. Submit a test lead through Meta's Lead Testing Tool or the Dev Curl Helper.
+        {/* Main Workspace */}
+        <main className="flex-1 w-full max-w-[1400px] mx-auto p-4 sm:p-6 space-y-6">
+          {/* Metric Cards Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard
+              icon={<Smartphone className="w-5 h-5" />}
+              label="Connected mobile apps"
+              value={String(activeSockets)}
+              hint={mobileOnline ? 'Live Socket.IO' : 'Waiting for app'}
+              hintTone={mobileOnline ? 'live' : 'muted'}
+            />
+            <MetricCard
+              icon={<Database className="w-5 h-5" />}
+              label="Total leads ingested"
+              value={String(status?.stats.totalLeads || 0)}
+              hint="in SQLite"
+            />
+            <MetricCard
+              icon={<ShieldCheck className="w-5 h-5" />}
+              label="Registered CRM agents"
+              value={String(status?.stats.totalUsers || 0)}
+              hint="Accounts"
+            />
+            <div className="p-4 rounded-card bg-surface border border-line shadow-[var(--shadow-card)] flex items-start gap-3">
+              <div className="w-10 h-10 rounded-[10px] bg-highlight text-brand flex items-center justify-center shrink-0">
+                <Webhook className="w-5 h-5" />
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
-                    <tr>
-                      <th className="p-3">Name</th>
-                      <th className="p-3">Email</th>
-                      <th className="p-3">Phone</th>
-                      <th className="p-3">Company</th>
-                      <th className="p-3">Received Time</th>
-                      <th className="p-3">Meta Leadgen ID</th>
-                      <th className="p-3">Assigned User</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800 font-mono">
-                    {status.recentLeads.map((lead) => {
-                      const user = status.users.find((u) => u.id === lead.userId);
-                      return (
-                        <tr key={lead.id} className="hover:bg-slate-800/50 transition">
-                          <td className="p-3 font-sans font-bold text-white">{lead.name}</td>
-                          <td className="p-3 text-slate-300">{lead.email}</td>
-                          <td className="p-3 text-slate-300">{lead.phone}</td>
-                          <td className="p-3 text-blue-400 font-sans font-medium">{lead.company || '—'}</td>
-                          <td className="p-3 text-slate-400">{formatTimestamp(lead.createdTime || lead.createdAt)}</td>
-                          <td className="p-3 text-slate-400">{lead.externalMetaLeadId}</td>
-                          <td className="p-3 font-sans text-slate-300">{user?.name || lead.userId}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div className="min-w-0">
+                <div className="text-xs text-muted">Meta webhook endpoint</div>
+                <div className="text-sm font-semibold text-live flex items-center gap-1.5 mt-1">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Ready</span>
+                </div>
+                <div className="text-[11px] text-muted font-mono mt-0.5 truncate">/api/webhooks/meta</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Webhook Configuration Card */}
+          <div className="rounded-card bg-surface border border-line shadow-[var(--shadow-card)] p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Webhook className="w-4 h-4 text-brand" />
+              <h2 className="text-sm font-semibold text-ink">Webhook configuration</h2>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <ConfigField
+                label="Meta webhook URL"
+                value={webhookUrl}
+                copied={copiedUrl}
+                onCopy={() => copyToClipboard(webhookUrl, true)}
+                valueClassName="text-brand"
+              />
+              <ConfigField
+                label="Verify token"
+                value={verifyToken}
+                copied={copiedToken}
+                onCopy={() => copyToClipboard(verifyToken, false)}
+                valueClassName="text-live"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button
+                onClick={testHandshake}
+                disabled={isVerifying}
+                className="inline-flex items-center gap-2 bg-brand hover:bg-brand-hover text-white font-medium px-3.5 py-2 rounded-control text-sm transition-colors disabled:opacity-50"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{isVerifying ? 'Verifying…' : 'Test GET handshake'}</span>
+              </button>
+              <span className="text-xs text-muted">Meta sends a GET request to verify the callback URL.</span>
+            </div>
+
+            {verifyResult && (
+              <div
+                className={`p-3 rounded-control text-xs font-mono border ${
+                  verifyResult.includes('200 OK')
+                    ? 'bg-highlight border-line text-live'
+                    : 'bg-[#fdf1ef] border-[#f0d2cd] text-danger'
+                }`}
+              >
+                {verifyResult}
               </div>
             )}
           </div>
-        )}
 
-        {/* Tab 3: React Native App Run Guide */}
-        {activeTab === 'mobile_guide' && (
-          <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 space-y-6 text-xs text-slate-300">
-            <div>
-              <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2">
-                <Smartphone className="w-5 h-5 text-indigo-400" />
-                <span>Running the Real React Native App (`mobile/`)</span>
-              </h3>
-              <p className="text-slate-400">
-                The mobile app is located in the <code className="text-blue-400 font-mono">mobile/</code> directory and is ready to run on an Android Emulator or physical phone.
-              </p>
+          {/* Tab content */}
+          {activeTab === 'stream' && (
+            <div className="h-[560px]">
+              <ServerLogsPanel />
             </div>
+          )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Option A: Android Emulator */}
-              <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
-                <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">1</span>
-                  <span>Option A: Android Emulator</span>
-                </h4>
-                <p className="text-slate-400 text-[11px]">
-                  Android emulator maps <code className="text-blue-400">localhost:3000</code> to <code className="text-emerald-400">10.0.2.2:3000</code> automatically configured in <code className="text-slate-300 font-mono">mobile/src/config/env.ts</code>.
+          {activeTab === 'leads' && (
+            <div className="rounded-card bg-surface border border-line shadow-[var(--shadow-card)] overflow-hidden">
+              <div className="flex flex-wrap justify-between items-center gap-3 p-5 border-b border-line">
+                <div>
+                  <h3 className="text-sm font-semibold text-ink">Stored leads</h3>
+                  <p className="text-xs text-muted">Leads ingested from Meta webhooks and routed to user accounts</p>
+                </div>
+                <button
+                  onClick={fetchStatus}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-canvas hover:bg-highlight text-ink hover:text-brand rounded-control text-xs font-medium border border-line transition-colors"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Refresh table</span>
+                </button>
+              </div>
+
+              {!status?.recentLeads || status.recentLeads.length === 0 ? (
+                <div className="m-5 p-12 text-center border border-dashed border-line rounded-card text-muted text-xs">
+                  No leads recorded yet. Submit a test lead through Meta&apos;s Lead Testing Tool or the Developer Tools.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-canvas text-muted uppercase text-[10px] tracking-wider border-b border-line">
+                      <tr>
+                        <th className="px-4 py-3 font-semibold">Name</th>
+                        <th className="px-4 py-3 font-semibold">Email</th>
+                        <th className="px-4 py-3 font-semibold">Phone</th>
+                        <th className="px-4 py-3 font-semibold">Company</th>
+                        <th className="px-4 py-3 font-semibold">Received</th>
+                        <th className="px-4 py-3 font-semibold">Meta leadgen ID</th>
+                        <th className="px-4 py-3 font-semibold">Assigned user</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line">
+                      {status.recentLeads.map((lead) => {
+                        const user = status.users.find((u) => u.id === lead.userId);
+                        return (
+                          <tr key={lead.id} className="hover:bg-highlight/60 transition-colors">
+                            <td className="px-4 py-3 font-semibold text-ink">{lead.name}</td>
+                            <td className="px-4 py-3 text-muted">{lead.email}</td>
+                            <td className="px-4 py-3 text-muted">{lead.phone}</td>
+                            <td className="px-4 py-3 text-brand font-medium">{lead.company || '—'}</td>
+                            <td className="px-4 py-3 text-muted">{formatTimestamp(lead.createdTime || lead.createdAt)}</td>
+                            <td className="px-4 py-3 text-muted font-mono">{lead.externalMetaLeadId}</td>
+                            <td className="px-4 py-3 text-ink">{user?.name || lead.userId}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'mobile_guide' && (
+            <div className="rounded-card bg-surface border border-line shadow-[var(--shadow-card)] p-6 space-y-6 text-xs text-muted">
+              <div>
+                <h3 className="text-base font-semibold text-ink mb-1 flex items-center gap-2">
+                  <Smartphone className="w-5 h-5 text-brand" />
+                  <span>Running the React Native app (mobile/)</span>
+                </h3>
+                <p>
+                  The mobile app is located in the <code className="text-brand font-mono">mobile/</code> directory and is ready to run on an Android emulator or a physical phone.
                 </p>
-                <pre className="p-3 rounded bg-slate-900 text-slate-200 font-mono text-[11px] overflow-x-auto">
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-canvas border border-line rounded-card space-y-3">
+                  <h4 className="font-semibold text-ink text-xs flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center text-[10px]">1</span>
+                    <span>Option A: Android emulator</span>
+                  </h4>
+                  <p className="text-[11px]">
+                    The Android emulator maps <code className="text-brand">localhost:3000</code> to <code className="text-live">10.0.2.2:3000</code>, configured in <code className="text-ink font-mono">mobile/src/config/env.ts</code>.
+                  </p>
+                  <pre className="p-3 rounded-control bg-ink text-slate-100 font-mono text-[11px] overflow-x-auto">
 {`cd mobile
 npm install
 npm run android`}
-                </pre>
-              </div>
+                  </pre>
+                </div>
 
-              {/* Option B: Physical Android Device */}
-              <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
-                <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">2</span>
-                  <span>Option B: Physical Phone (Expo Go)</span>
-                </h4>
-                <p className="text-slate-400 text-[11px]">
-                  Open <code className="text-slate-300 font-mono">mobile/src/config/env.ts</code> and set <code className="text-blue-400">DEV_LAN_OR_NGROK_URL</code> to your computer's local Wi-Fi IP (e.g. <code className="text-emerald-400">http://192.168.1.100:3000</code>) or your public ngrok URL.
-                </p>
-                <pre className="p-3 rounded bg-slate-900 text-slate-200 font-mono text-[11px] overflow-x-auto">
+                <div className="p-4 bg-canvas border border-line rounded-card space-y-3">
+                  <h4 className="font-semibold text-ink text-xs flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-live text-white flex items-center justify-center text-[10px]">2</span>
+                    <span>Option B: Physical phone (Expo Go)</span>
+                  </h4>
+                  <p className="text-[11px]">
+                    Open <code className="text-ink font-mono">mobile/src/config/env.ts</code> and set <code className="text-brand">DEV_LAN_OR_NGROK_URL</code> to your computer&apos;s local Wi-Fi IP (e.g. <code className="text-live">http://192.168.1.100:3000</code>) or your public ngrok URL.
+                  </p>
+                  <pre className="p-3 rounded-control bg-ink text-slate-100 font-mono text-[11px] overflow-x-auto">
 {`cd mobile
 npx expo start
 # Scan the QR code using Expo Go app on your phone`}
-                </pre>
-              </div>
-            </div>
-
-            {/* Mobile CRM Screen Spec */}
-            <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-              <h4 className="font-bold text-white text-xs">Mobile App Behavior on Android:</h4>
-              <ol className="list-decimal list-inside space-y-1.5 text-slate-400 text-[11px]">
-                <li>User logs into the mobile app (or registers a new user).</li>
-                <li>App automatically opens the <strong>Leads</strong> screen.</li>
-                <li>Green indicator confirms <strong>Realtime Connected</strong> via Socket.IO.</li>
-                <li>Leave the phone sitting untouched on your desk.</li>
-                <li>Submit a lead from Meta's Lead Testing Tool.</li>
-                <li>The lead appears instantly on the phone screen with <strong>Zero Refresh</strong>, no pull-to-refresh, and no user touch!</li>
-              </ol>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 4: Meta Setup Guide */}
-        {activeTab === 'meta_guide' && (
-          <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 space-y-6 text-xs text-slate-300">
-            <div>
-              <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2">
-                <Webhook className="w-5 h-5 text-purple-400" />
-                <span>Meta Developer Portal & Webhook Setup</span>
-              </h3>
-              <p className="text-slate-400">
-                How to configure the real Meta Lead Testing Tool to send live webhooks to your backend.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-                <h4 className="font-bold text-white text-xs">Step 1: Expose Backend via ngrok (Local Tunnel)</h4>
-                <p className="text-slate-400 text-[11px]">
-                  Meta requires an HTTPS callback URL. Run ngrok in a separate terminal:
-                </p>
-                <pre className="p-2.5 rounded bg-slate-900 text-slate-200 font-mono text-[11px]">
-                  ngrok http 3000
-                </pre>
-                <p className="text-slate-400 text-[11px]">
-                  Copy the HTTPS forwarding address, e.g. <code className="text-blue-400">https://xyz.ngrok-free.app</code>.
-                </p>
+                  </pre>
+                </div>
               </div>
 
-              <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-                <h4 className="font-bold text-white text-xs">Step 2: Configure Meta Developer Webhook</h4>
-                <ol className="list-decimal list-inside space-y-1 text-slate-400 text-[11px]">
-                  <li>Go to <a href="https://developers.facebook.com" target="_blank" rel="noreferrer" className="text-blue-400 underline">developers.facebook.com</a> &rarr; Your App &rarr; <strong>Webhooks</strong>.</li>
-                  <li>Select <strong>Page</strong> from the dropdown and click <strong>Subscribe to this object</strong>.</li>
-                  <li>Enter Callback URL: <code className="text-blue-300 bg-slate-900 px-1.5 py-0.5 rounded">https://&lt;your-ngrok-url&gt;/api/webhooks/meta</code></li>
-                  <li>Enter Verify Token: <code className="text-emerald-300 bg-slate-900 px-1.5 py-0.5 rounded">{verifyToken}</code></li>
-                  <li>Click <strong>Verify and Save</strong>. (Meta tests GET /api/webhooks/meta).</li>
-                  <li>In the Page webhooks list, locate <code className="text-white font-bold">leadgen</code> and click <strong>Subscribe</strong>.</li>
+              <div className="p-4 bg-canvas border border-line rounded-card space-y-2">
+                <h4 className="font-semibold text-ink text-xs">Mobile app behavior on Android:</h4>
+                <ol className="list-decimal list-inside space-y-1.5 text-[11px]">
+                  <li>User logs into the mobile app (or registers a new user).</li>
+                  <li>App automatically opens the <strong className="text-ink font-semibold">Leads</strong> screen.</li>
+                  <li>Green indicator confirms <strong className="text-ink font-semibold">Realtime Connected</strong> via Socket.IO.</li>
+                  <li>Leave the phone sitting untouched on your desk.</li>
+                  <li>Submit a lead from Meta&apos;s Lead Testing Tool.</li>
+                  <li>The lead appears instantly on the phone screen with <strong className="text-ink font-semibold">zero refresh</strong>, no pull-to-refresh, and no user touch.</li>
                 </ol>
               </div>
-
-              <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-                <h4 className="font-bold text-white text-xs">Step 3: Open Meta's Official Lead Testing Tool</h4>
-                <p className="text-slate-400 text-[11px]">
-                  Visit <a href="https://developers.facebook.com/tools/lead-ads-testing" target="_blank" rel="noreferrer" className="text-blue-400 underline">Meta Lead Ads Testing Tool</a>, select your Page and Form, enter your details, and click <strong>Create Lead</strong>!
-                </p>
-              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Tab 5: Isolated Dev Test Helper */}
-        {activeTab === 'dev_test' && (
-          <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 space-y-5 text-xs text-slate-300">
-            <div className="p-3 bg-amber-950/40 border border-amber-800/60 rounded-lg text-amber-200 text-xs flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          {activeTab === 'meta_guide' && (
+            <div className="rounded-card bg-surface border border-line shadow-[var(--shadow-card)] p-6 space-y-6 text-xs text-muted">
               <div>
-                <strong>Developer Utility Endpoint:</strong> This section is strictly for local testing without needing an active Meta Developer account. It sends the exact same normalized webhook structure as Meta's Lead Testing Tool.
+                <h3 className="text-base font-semibold text-ink mb-1 flex items-center gap-2">
+                  <Webhook className="w-5 h-5 text-brand" />
+                  <span>Meta Developer Portal &amp; webhook setup</span>
+                </h3>
+                <p>How to configure the real Meta Lead Testing Tool to send live webhooks to your backend.</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-4 bg-canvas border border-line rounded-card space-y-2">
+                  <h4 className="font-semibold text-ink text-xs">Step 1: Expose backend via ngrok (local tunnel)</h4>
+                  <p className="text-[11px]">Meta requires an HTTPS callback URL. Run ngrok in a separate terminal:</p>
+                  <pre className="p-2.5 rounded-control bg-ink text-slate-100 font-mono text-[11px]">ngrok http 3000</pre>
+                  <p className="text-[11px]">
+                    Copy the HTTPS forwarding address, e.g. <code className="text-brand">https://xyz.ngrok-free.app</code>.
+                  </p>
+                </div>
+
+                <div className="p-4 bg-canvas border border-line rounded-card space-y-2">
+                  <h4 className="font-semibold text-ink text-xs">Step 2: Configure Meta Developer webhook</h4>
+                  <ol className="list-decimal list-inside space-y-1 text-[11px]">
+                    <li>Go to <a href="https://developers.facebook.com" target="_blank" rel="noreferrer" className="text-brand underline">developers.facebook.com</a> &rarr; Your App &rarr; <strong className="text-ink font-semibold">Webhooks</strong>.</li>
+                    <li>Select <strong className="text-ink font-semibold">Page</strong> from the dropdown and click <strong className="text-ink font-semibold">Subscribe to this object</strong>.</li>
+                    <li>Enter Callback URL: <code className="text-brand bg-surface border border-line px-1.5 py-0.5 rounded">https://&lt;your-ngrok-url&gt;/api/webhooks/meta</code></li>
+                    <li>Enter Verify Token: <code className="text-live bg-surface border border-line px-1.5 py-0.5 rounded">{verifyToken}</code></li>
+                    <li>Click <strong className="text-ink font-semibold">Verify and Save</strong>. (Meta tests GET /api/webhooks/meta.)</li>
+                    <li>In the Page webhooks list, locate <code className="text-ink font-semibold">leadgen</code> and click <strong className="text-ink font-semibold">Subscribe</strong>.</li>
+                  </ol>
+                </div>
+
+                <div className="p-4 bg-canvas border border-line rounded-card space-y-2">
+                  <h4 className="font-semibold text-ink text-xs">Step 3: Open Meta&apos;s official Lead Testing Tool</h4>
+                  <p className="text-[11px]">
+                    Visit the <a href="https://developers.facebook.com/tools/lead-ads-testing" target="_blank" rel="noreferrer" className="text-brand underline">Meta Lead Ads Testing Tool</a>, select your Page and Form, enter your details, and click <strong className="text-ink font-semibold">Create Lead</strong>.
+                  </p>
+                </div>
               </div>
             </div>
+          )}
 
-            <form onSubmit={handleDevWebhookTest} className="space-y-4 max-w-xl">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {activeTab === 'dev_test' && (
+            <div className="rounded-card bg-surface border border-line shadow-[var(--shadow-card)] p-6 space-y-5 text-xs text-muted">
+              <div className="p-3 bg-highlight border border-line rounded-control text-ink text-xs flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-brand shrink-0 mt-0.5" />
                 <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Lead Full Name</label>
-                  <input
-                    type="text"
-                    value={devLeadName}
-                    onChange={(e) => setDevLeadName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Email</label>
-                  <input
-                    type="email"
-                    value={devLeadEmail}
-                    onChange={(e) => setDevLeadEmail(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Phone</label>
-                  <input
-                    type="text"
-                    value={devLeadPhone}
-                    onChange={(e) => setDevLeadPhone(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1 font-medium">Company</label>
-                  <input
-                    type="text"
-                    value={devLeadCompany}
-                    onChange={(e) => setDevLeadCompany(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white"
-                    required
-                  />
+                  <strong className="font-semibold">Developer utility endpoint:</strong> This section is strictly for local testing without needing an active Meta Developer account. It sends the exact same normalized webhook structure as Meta&apos;s Lead Testing Tool.
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={devSubmitting}
-                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition flex items-center gap-2 disabled:opacity-50"
-              >
-                <Send className="w-4 h-4" />
-                <span>{devSubmitting ? 'Simulating Webhook...' : 'Dispatch Webhook Event to Backend'}</span>
-              </button>
-            </form>
+              <form onSubmit={handleDevWebhookTest} className="space-y-4 max-w-xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-ink mb-1 font-medium">Lead full name</label>
+                    <input
+                      type="text"
+                      value={devLeadName}
+                      onChange={(e) => setDevLeadName(e.target.value)}
+                      className="w-full px-3 py-2 bg-surface border border-line rounded-control text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition"
+                      required
+                    />
+                  </div>
 
-            {devResult && (
-              <div className={`p-3 rounded-lg text-xs font-mono border ${
-                devResult.startsWith('Success') ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300' : 'bg-red-950/60 border-red-800 text-red-300'
-              }`}>
-                {devResult}
-              </div>
-            )}
-          </div>
+                  <div>
+                    <label className="block text-ink mb-1 font-medium">Email</label>
+                    <input
+                      type="email"
+                      value={devLeadEmail}
+                      onChange={(e) => setDevLeadEmail(e.target.value)}
+                      className="w-full px-3 py-2 bg-surface border border-line rounded-control text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-ink mb-1 font-medium">Phone</label>
+                    <input
+                      type="text"
+                      value={devLeadPhone}
+                      onChange={(e) => setDevLeadPhone(e.target.value)}
+                      className="w-full px-3 py-2 bg-surface border border-line rounded-control text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-ink mb-1 font-medium">Company</label>
+                    <input
+                      type="text"
+                      value={devLeadCompany}
+                      onChange={(e) => setDevLeadCompany(e.target.value)}
+                      className="w-full px-3 py-2 bg-surface border border-line rounded-control text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={devSubmitting}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-hover text-white rounded-control font-medium transition-colors disabled:opacity-50"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>{devSubmitting ? 'Simulating webhook…' : 'Dispatch webhook event to backend'}</span>
+                </button>
+              </form>
+
+              {devResult && (
+                <div
+                  className={`p-3 rounded-control text-xs font-mono border ${
+                    devResult.startsWith('Success')
+                      ? 'bg-highlight border-line text-live'
+                      : 'bg-[#fdf1ef] border-[#f0d2cd] text-danger'
+                  }`}
+                >
+                  {devResult}
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({
+  icon,
+  label,
+  value,
+  hint,
+  hintTone = 'muted',
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  hint?: string;
+  hintTone?: 'muted' | 'live';
+}) {
+  return (
+    <div className="p-4 rounded-card bg-surface border border-line shadow-[var(--shadow-card)] flex items-start gap-3">
+      <div className="w-10 h-10 rounded-[10px] bg-highlight text-brand flex items-center justify-center shrink-0">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <div className="text-xs text-muted">{label}</div>
+        <div className="text-2xl font-semibold text-ink leading-tight mt-0.5">{value}</div>
+        {hint && (
+          <div className={`text-[11px] mt-0.5 ${hintTone === 'live' ? 'text-live' : 'text-muted'}`}>{hint}</div>
         )}
-      </main>
+      </div>
+    </div>
+  );
+}
+
+function ConfigField({
+  label,
+  value,
+  copied,
+  onCopy,
+  valueClassName = '',
+}: {
+  label: string;
+  value: string;
+  copied: boolean;
+  onCopy: () => void;
+  valueClassName?: string;
+}) {
+  return (
+    <div>
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">{label}</div>
+      <div className="flex items-center gap-2 bg-canvas border border-line rounded-control px-3 py-2">
+        <code className={`flex-1 font-mono text-xs truncate select-all ${valueClassName}`}>{value}</code>
+        <button
+          onClick={onCopy}
+          className="p-1 rounded text-muted hover:text-brand transition-colors shrink-0"
+          title="Copy"
+        >
+          {copied ? <Check className="w-4 h-4 text-live" /> : <Copy className="w-4 h-4" />}
+        </button>
+      </div>
     </div>
   );
 }
