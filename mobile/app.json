@@ -10,8 +10,7 @@
       "bundleIdentifier": "com.metaleadspoc.app"
     },
     "android": {
-      "package": "com.metaleadspoc.app",
-      "usesCleartextTraffic": true
+      "package": "com.metaleadspoc.app"
     },
     "web": {},
     "plugins": [

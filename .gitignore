@@ -16,3 +16,4 @@ mobile/.expo/
 # Local database/runtime data
 *.db
 *.db.json
+mobile/android/.gradle/
